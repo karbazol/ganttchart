@@ -11,31 +11,6 @@ using System.Drawing.Printing;
 
 namespace Braincase.GanttChart
 {
-    static class GDIExtention
-    {
-        public static void DrawRectangle(this Graphics graphics, Pen pen, RectangleF rectangle)
-        {
-            graphics.DrawRectangle(pen, rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
-        }
-
-        public static RectangleF TextBoxAlign(this Graphics graphics, string text, ChartTextAlign align, Font font, RectangleF textbox, float margin = 0)
-        {
-            var size = graphics.MeasureString(text, font);
-            if (align == ChartTextAlign.MiddleCenter)
-            {
-                return new RectangleF(new PointF(textbox.Left + (textbox.Width - size.Width) / 2, textbox.Top + (textbox.Height - size.Height) / 2), size);
-            }
-            else if (align == ChartTextAlign.MiddleLeft)
-            {
-                return new RectangleF(new PointF(textbox.Left + margin, textbox.Top + (textbox.Height - size.Height) / 2), size);
-            }
-            else
-            {
-                throw new NotImplementedException("Need to implement more alignment types");
-            }
-        }
-    }
-
     /// <summary>
     /// Gantt Chart control
     /// </summary>
@@ -326,7 +301,7 @@ namespace Braincase.GanttChart
         /// <summary>
         /// Print the Chart to the specified PrintDocument.
         /// </summary>
-        public void Print(PrintDocument document, float scale = 1.0f)
+        public void Print(PrintDocument document, float scale)
         {
             // save a copy of the current viewport and swap it with PrintViewport
             var viewport = _mViewport;
@@ -383,7 +358,7 @@ namespace Braincase.GanttChart
         /// Print the Chart to an Image
         /// </summary>
         /// <param name="scale">Scale to print the image at.</param>
-        public Bitmap Print(float scale = 1.0f)
+        public Bitmap Print(float scale)
         {
             var viewport = _mViewport;
             _mViewport = new ImageViewport(scale, viewport.WorldWidth, viewport.WorldHeight);
@@ -692,7 +667,7 @@ namespace Braincase.GanttChart
         /// <param name="e"></param>
         protected virtual void OnTaskMouseOver(TaskMouseEventArgs e)
         {
-            TaskMouseOver?.Invoke(this, e);
+            if (TaskMouseOver != null) TaskMouseOver.Invoke(this, e);
 
             this.Cursor = Cursors.Hand;
 
@@ -710,7 +685,7 @@ namespace Braincase.GanttChart
         /// <param name="e"></param>
         protected virtual void OnTaskMouseOut(TaskMouseEventArgs e)
         {
-            TaskMouseOut?.Invoke(this, e);
+            if (TaskMouseOut != null) TaskMouseOut.Invoke(this, e);
 
             this.Cursor = Cursors.Default;
 
@@ -724,7 +699,7 @@ namespace Braincase.GanttChart
         protected virtual void OnTaskMouseDrag(TaskDragDropEventArgs e)
         {
             // fire listeners
-            TaskMouseDrag?.Invoke(this, e);
+            if(TaskMouseDrag != null) TaskMouseDrag.Invoke(this, e);
 
             // Default drag behaviors **********************************
             if (e.Button == System.Windows.Forms.MouseButtons.Middle)
@@ -752,7 +727,7 @@ namespace Braincase.GanttChart
 
                 if (e.Target == null)
                 {
-                    if (Control.ModifierKeys.HasFlag(Keys.Shift))
+                    if ((Control.ModifierKeys & Keys.Shift) != 0)
                     {
                         // insertion line
                         _mOverlay.Row = e.Row;
@@ -779,7 +754,7 @@ namespace Braincase.GanttChart
         protected virtual void OnTaskMouseDrop(TaskDragDropEventArgs e)
         {
             // Fire event
-            TaskMouseDrop?.Invoke(this, e);
+            if (TaskMouseDrop != null) TaskMouseDrop.Invoke(this, e);
 
             var delta = (e.PreviousLocation.X - e.StartLocation.X);
 
@@ -787,12 +762,13 @@ namespace Braincase.GanttChart
             {
                 if (e.Target == null)
                 {
-                    if (Control.ModifierKeys.HasFlag(Keys.Shift))
+                    if ((Control.ModifierKeys & Keys.Shift) != 0)
                     {
                         // insert
                         Task source = e.Source;
                         if (_mProject.IsPart(source)) source = _mProject.SplitTaskOf(source);
-                        if (this.TryGetRow(source, out int from))
+                        int from;
+                        if (this.TryGetRow(source, out from))
                             _mProject.Move(source, e.Row - from);
                     }
                     else
@@ -804,11 +780,11 @@ namespace Braincase.GanttChart
                 }
                 else // have drop target
                 {
-                    if (Control.ModifierKeys.HasFlag(Keys.Shift))
+                    if ((Control.ModifierKeys & Keys.Shift) != 0)
                     {
                         _mProject.Relate(e.Target, e.Source);
                     }
-                    else if (Control.ModifierKeys.HasFlag(Keys.Alt))
+                    else if ((Control.ModifierKeys & Keys.Alt) != 0)
                     {
                         var source = e.Source;
                         if (_mProject.IsPart(source)) source = _mProject.SplitTaskOf(source);
@@ -849,11 +825,11 @@ namespace Braincase.GanttChart
         /// <param name="e"></param>
         protected virtual void OnTaskMouseClick(TaskMouseEventArgs e)
         {
-            TaskMouseClick?.Invoke(this, e);
+            if (TaskMouseClick != null) TaskMouseClick.Invoke(this, e);
 
             if (e.Button == System.Windows.Forms.MouseButtons.Left)
             {
-                if (ModifierKeys.HasFlag(Keys.Shift)) // activate multi-select
+                if ((ModifierKeys & Keys.Shift) != 0) // activate multi-select
                 {
                     if (!_mSelectedTasks.Remove(e.Task))
                     {
@@ -869,7 +845,7 @@ namespace Braincase.GanttChart
             }
             else if (e.Button == System.Windows.Forms.MouseButtons.Middle)
             {
-                if (ModifierKeys.HasFlag(Keys.Shift))
+                if ((ModifierKeys & Keys.Shift) != 0)
                 {
                     var newtask = CreateTaskDelegate();
                     _mProject.Add(newtask);
@@ -878,7 +854,7 @@ namespace Braincase.GanttChart
                     if (_mProject.IsPart(e.Task)) _mProject.Move(newtask, _mProject.IndexOf(_mProject.SplitTaskOf(e.Task)) + 1 - _mProject.IndexOf(newtask));
                     else _mProject.Move(newtask, _mProject.IndexOf(e.Task) + 1 - _mProject.IndexOf(newtask));
                 }
-                else if (Control.ModifierKeys.HasFlag(Keys.Alt))
+                else if ((Control.ModifierKeys & Keys.Alt) != 0)
                     _mProject.Delete(e.Task);
             }
             this.Invalidate();
@@ -889,7 +865,7 @@ namespace Braincase.GanttChart
         /// <param name="e"></param>
         protected virtual void OnTaskMouseDoubleClick(TaskMouseEventArgs e)
         {
-            TaskMouseDoubleClick?.Invoke(this, e);
+            if (TaskMouseDoubleClick != null) TaskMouseDoubleClick.Invoke(this, e);
 
             if (e.Button == System.Windows.Forms.MouseButtons.Left)
             {
@@ -910,7 +886,7 @@ namespace Braincase.GanttChart
         /// <param name="e"></param>
         protected virtual void OnTaskSelected(TaskMouseEventArgs e)
         {
-            TaskSelected?.Invoke(this, e);
+            if (TaskSelected != null) TaskSelected.Invoke(this, e);
         }
         /// <summary>
         /// Raises the TaskDeselecting event and then clear all the selected tasks
@@ -918,7 +894,7 @@ namespace Braincase.GanttChart
         /// <param name="e"></param>
         protected virtual void OnTaskDeselecting(TaskMouseEventArgs e)
         {
-            TaskDeselecting?.Invoke(this, e);
+            if (TaskDeselecting != null) TaskDeselecting.Invoke(this, e);
 
             // deselect all tasks
             _mSelectedTasks.Clear();
@@ -938,7 +914,7 @@ namespace Braincase.GanttChart
         /// <param name="e"></param>
         protected virtual void OnPaintTimeline(TimelinePaintEventArgs e)
         {
-            PaintTimeline?.Invoke(this, e);
+            if (PaintTimeline != null) PaintTimeline.Invoke(this, e);
         }
         /// <summary>
         /// Raises the PaintHeader event
@@ -946,7 +922,7 @@ namespace Braincase.GanttChart
         /// <param name="e"></param>
         protected virtual void OnPaintHeader(HeaderPaintEventArgs e)
         {
-            PaintHeader?.Invoke(this, e);
+            if (PaintHeader != null) PaintHeader.Invoke(this, e);
         }
         
         #endregion Chart Events
@@ -1291,7 +1267,9 @@ namespace Braincase.GanttChart
                 // Give user a chance to format the tickmark that is to be drawn
                 // https://blog.nicholasrogoff.com/2012/05/05/c-datetime-tostring-formats-quick-reference/
                 datetime = dates[i];
-                ___GetLabelFormat(datetime, datetimeprev, out LabelFormat minor, out LabelFormat major);
+                LabelFormat minor;
+                LabelFormat major;
+                ___GetLabelFormat(datetime, datetimeprev, out minor, out major);
                 e = new TimelinePaintEventArgs(graphics, clipRect, this, datetime, datetimeprev, minor, major);
                 OnPaintTimeline(e);
 
@@ -1371,7 +1349,7 @@ namespace Braincase.GanttChart
                     bool critical = crit_task_set.Contains(task);
                     if (critical) e = new TaskPaintEventArgs(graphics, clipRect, this, task, row, critical, this.Font, this.CriticalTaskFormat);
                     else e = new TaskPaintEventArgs(graphics, clipRect, this, task, row, critical, this.Font, this.TaskFormat);
-                    PaintTask?.Invoke(this, e);
+                    if (PaintTask != null) PaintTask.Invoke(this, e);
 
                     if (viewRect.IntersectsWith(taskrect))
                     {
@@ -1595,6 +1573,31 @@ namespace Braincase.GanttChart
         Task _mMouseEntered = null; // flag whether the mouse has entered a Task rectangle or not
         Dictionary<Task, string> _mTaskToolTip = new Dictionary<Task, string>();
         #endregion Private Helper Variables
+    }
+
+    static class GDIExtention
+    {
+        public static void DrawRectangle(this Graphics graphics, Pen pen, RectangleF rectangle)
+        {
+            graphics.DrawRectangle(pen, rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
+        }
+
+        public static RectangleF TextBoxAlign(this Graphics graphics, string text, ChartTextAlign align, Font font, RectangleF textbox, float margin)
+        {
+            var size = graphics.MeasureString(text, font);
+            if (align == ChartTextAlign.MiddleCenter)
+            {
+                return new RectangleF(new PointF(textbox.Left + (textbox.Width - size.Width) / 2, textbox.Top + (textbox.Height - size.Height) / 2), size);
+            }
+            else if (align == ChartTextAlign.MiddleLeft)
+            {
+                return new RectangleF(new PointF(textbox.Left + margin, textbox.Top + (textbox.Height - size.Height) / 2), size);
+            }
+            else
+            {
+                throw new NotImplementedException("Need to implement more alignment types");
+            }
+        }
     }
 
     #region Chart Formatting

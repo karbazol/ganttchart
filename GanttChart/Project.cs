@@ -202,9 +202,10 @@ namespace Braincase.GanttChart
         /// <param name="group"></param>
         public void Ungroup(T group)
         {
+            List<T> members;
             if (group != null
                 //&& _mRegister.Contains(group)
-                && _mMembersOfGroup.TryGetValue(group, out List<T> members))
+                && _mMembersOfGroup.TryGetValue(group, out members))
             {
                 var newgroup = this.DirectGroupOf(group);
                 if (newgroup == null)
@@ -417,7 +418,8 @@ namespace Braincase.GanttChart
         {
             if (group == null) yield break;
 
-            if (_mMembersOfGroup.TryGetValue(group, out List<T> list))
+            List<T> list;
+            if (_mMembersOfGroup.TryGetValue(group, out list))
             {
                 var iter = list.GetEnumerator();
                 while (iter.MoveNext()) yield return iter.Current;
@@ -490,7 +492,8 @@ namespace Braincase.GanttChart
         {
             if (precedent == null) yield break;
 
-            if (_mDependantsOfPrecedent.TryGetValue(precedent, out HashSet<T> dependants))
+            HashSet<T> dependants;
+            if (_mDependantsOfPrecedent.TryGetValue(precedent, out dependants))
             {
                 var iter = dependants.GetEnumerator();
                 while (iter.MoveNext()) yield return iter.Current;
@@ -516,7 +519,8 @@ namespace Braincase.GanttChart
                 TimeSpan max_end = TimeSpan.MinValue;
                 foreach (var task in this.Tasks)
                 {
-                    if (!endtimelookp.TryGetValue(task.End, out List<T> list))
+                    List<T> list;
+                    if (!endtimelookp.TryGetValue(task.End, out list))
                         endtimelookp[task.End] = new List<T>(10);
                     endtimelookp[task.End].Add(task);
 
@@ -540,7 +544,8 @@ namespace Braincase.GanttChart
         /// <returns></returns>
         public bool IsGroup(T task)
         {
-            if (_mMembersOfGroup.TryGetValue(task, out List<T> list))
+            List<T> list;
+            if (_mMembersOfGroup.TryGetValue(task, out list))
                 return list.Count > 0;
             else
                 return false;
@@ -699,7 +704,8 @@ namespace Braincase.GanttChart
             if (task == null || !_mRegister.Contains(task))
                 yield break;
 
-            if (_mResourcesOfTask.TryGetValue(task, out HashSet<R> list))
+            HashSet<R> list;
+            if (_mResourcesOfTask.TryGetValue(task, out list))
             {
                 foreach (var item in list)
                     yield return item;
